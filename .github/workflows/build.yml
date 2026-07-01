@@ -47,12 +47,13 @@ jobs:
           buildozer android debug 2>&1 | tee build.log
         continue-on-error: false
 
+      # AQUÍ SE HIZO EL CAMBIO: Se agregó ./**/ para buscar el APK en cualquier subcarpeta
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: apk
-          path: bin/*.apk
+          path: ./**/bin/*.apk
 
       - name: Upload Build Logs
         if: failure()
@@ -60,4 +61,3 @@ jobs:
         with:
           name: build-logs
           path: build.log
-
