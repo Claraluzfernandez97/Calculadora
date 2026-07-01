@@ -30,17 +30,16 @@ jobs:
             tk-dev libgdbm-compat-dev \
             libreadline-dev liblzma-dev \
             cmake ninja-build
-          
-          sudo libtoolize --force --copy --install || true
-          sudo aclocal || true
-
-      - name: Setup Android SDK Tools (Solución al error de sdkmanager)
-        uses: android-actions/setup-android@v3
 
       - name: Initialize Autotools
         run: |
-          sudo autoreconf --install --force || true
-          sudo libtoolize --force --copy --install || true
+          sudo libtoolize --force --copy --install
+          sudo aclocal -I /usr/share/aclocal
+          sudo autoconf
+          sudo automake --add-missing --force-missing || true
+
+      - name: Setup Android SDK Tools
+        uses: android-actions/setup-android@v3
 
       - name: Install Buildozer and Dependencies
         run: |
@@ -57,3 +56,4 @@ jobs:
           yes | buildozer android debug
         env:
           BUILDOZER_BOOTSTRAP: sdl2
+
