@@ -31,8 +31,10 @@ jobs:
             libreadline-dev liblzma-dev \
             cmake ninja-build
           
-          # Rebuild libtool macros
           sudo libtoolize --force --copy --quiet || true
+
+      - name: Setup Android SDK Tools (Solución al error de sdkmanager)
+        uses: android-actions/setup-android@v3
 
       - name: Install Buildozer and Dependencies
         run: |
@@ -42,20 +44,6 @@ jobs:
       - name: Create Buildozer Config Cache Directory
         run: mkdir -p ~/.buildozer
 
-      - name: Automatically Accept Android SDK Licenses
-        run: |
-          mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
-          echo -e "\n2446a3e6b56a4616f71f02cd4158d7f358b52a99" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
-          echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
-
       - name: Build APK
         run: |
-          # Eliminamos el pipe '| tee' para que GitHub detecte los errores reales de Buildozer
           yes | buildozer android debug
-
-      - name: Upload APK
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: apk
-          path: bin/*.apk
