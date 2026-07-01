@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout repository
@@ -31,8 +31,14 @@ jobs:
             libreadline-dev liblzma-dev \
             cmake ninja-build
           
-          # Rebuild libtool macros
           sudo libtoolize --force --copy --quiet || true
+
+      - name: Setup Android SDK Tools
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android SDK Licenses
+        run: |
+          yes | sdkmanager --licenses || true
 
       - name: Install Buildozer and Dependencies
         run: |
@@ -44,20 +50,29 @@ jobs:
 
       - name: Build APK
         run: |
-          buildozer android debug 2>&1 | tee build.log
-        continue-on-error: false
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
+          # Ejecutamos buildozer directamente para capturar fallos reales
+          buildozer android debug
 
-      # AQUÍ SE HIZO EL CAMBIO: Se agregó ./**/ para buscar el APK en cualquier subcarpeta
+      # ESTE PASO NUEVO BUSCA EL APK EN TODO EL SERVIDOR Y LO TRAE AL FRENTE
+      - name: Find and Move APK
+        if: success()
+        run: |
+          mkdir -p output_apk
+          find . -name "*.apk" -exec cp {} output_apk/ \;
+          echo "Archivos encontrados:"
+          ls -R output_apk/
+
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: apk
-          path: ./**/bin/*.apk
+          name: apk-calculadora
+          path: output_apk/*.apk
 
       - name: Upload Build Logs
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: build-logs
-          path: build.log
+          path: ~/.buildozer/android/platform/build-*.log
