@@ -31,7 +31,14 @@ jobs:
             libreadline-dev liblzma-dev \
             cmake ninja-build
           
-          sudo libtoolize --force --copy --quiet || true
+          sudo libtoolize --force --copy --quiet || true 
+
+      # AQUÍ SE CORRIGIÓ EL GUIÓN (-) QUE ESTABA PEGADO Y MAL INDENTADO
+      - name: Set Java Version
+        run: |
+          sudo update-alternatives --install /usr/bin/java java /usr/lib/jvm/java-17-openjdk-amd64/bin/java 1
+          sudo update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/java-17-openjdk-amd64/bin/javac 1
+          echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
 
       - name: Setup Android SDK Tools
         uses: android-actions/setup-android@v3
@@ -54,7 +61,7 @@ jobs:
           # Ejecutamos buildozer directamente para capturar fallos reales
           buildozer android debug
 
-      # ESTE PASO NUEVO BUSCA EL APK EN TODO EL SERVIDOR Y LO TRAE AL FRENTE
+      # ESTE PASO BUSCA EL APK EN TODO EL SERVIDOR Y LO TRAE AL FRENTE
       - name: Find and Move APK
         if: success()
         run: |
