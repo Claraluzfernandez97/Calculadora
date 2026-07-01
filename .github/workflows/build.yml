@@ -42,9 +42,16 @@ jobs:
       - name: Create Buildozer Config Cache Directory
         run: mkdir -p ~/.buildozer
 
+      - name: Automatically Accept Android SDK Licenses
+        run: |
+          mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
+          echo -e "\n2446a3e6b56a4616f71f02cd4158d7f358b52a99" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
+          echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
+
       - name: Build APK
         run: |
-          buildozer android debug 2>&1 | tee build.log
+          # El comando 'yes' acepta cualquier otra confirmación que pida el SDK de Android
+          yes | buildozer android debug 2>&1 | tee build.log
         continue-on-error: false
 
       - name: Upload APK
@@ -55,7 +62,7 @@ jobs:
           path: bin/*.apk
 
       - name: Upload Build Logs
-        if: failure()
+        if: always() # Cambiado a 'always' para revisar el log pase lo que pase
         uses: actions/upload-artifact@v4
         with:
           name: build-logs
