@@ -50,9 +50,8 @@ jobs:
 
       - name: Build APK
         run: |
-          # El comando 'yes' acepta cualquier otra confirmación que pida el SDK de Android
-          yes | buildozer android debug 2>&1 | tee build.log
-        continue-on-error: false
+          # Eliminamos el pipe '| tee' para que GitHub detecte los errores reales de Buildozer
+          yes | buildozer android debug
 
       - name: Upload APK
         if: success()
@@ -60,10 +59,3 @@ jobs:
         with:
           name: apk
           path: bin/*.apk
-
-      - name: Upload Build Logs
-        if: always() # Cambiado a 'always' para revisar el log pase lo que pase
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-logs
-          path: build.log
