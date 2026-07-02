@@ -44,7 +44,8 @@ jobs:
 
       - name: Build APK
         run: |
-          buildozer android debug 2>&1 | tee build.log
+          # Agregamos "yes |" al inicio para aceptar las licencias de Android automáticamente
+          yes | buildozer android debug 2>&1 | tee build.log
         continue-on-error: false
 
       - name: Upload APK
@@ -55,7 +56,7 @@ jobs:
           path: bin/*.apk
 
       - name: Upload Build Logs
-        if: failure()
+        if: always() # Cambiado a always para que te suba el log pase lo que pase
         uses: actions/upload-artifact@v4
         with:
           name: build-logs
