@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
@@ -31,58 +31,32 @@ jobs:
             libreadline-dev liblzma-dev \
             cmake ninja-build
           
-          sudo libtoolize --force --copy --quiet || true 
-
-      - name: Set Java Version
-        run: |
-          sudo update-alternatives --install /usr/bin/java java /usr/lib/jvm/java-17-openjdk-amd64/bin/java 1
-          sudo update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/java-17-openjdk-amd64/bin/javac 1
-          echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
-
-      # 1. Usamos la acción oficial para instalar las herramientas necesarias en el entorno de GitHub
-      - name: Setup Android SDK Tools
-        uses: android-actions/setup-android@v3
-
-      # 2. Instalamos build-tools globalmente usando el sdkmanager correcto de la acción anterior
-      - name: Install Android SDK components
-        run: |
-          yes | sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          # Rebuild libtool macros
+          sudo libtoolize --force --copy --quiet || true
 
       - name: Install Buildozer and Dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
           pip install buildozer cython virtualenv pycparser
 
-      # 3. Compilar el APK diciéndole a Buildozer que use el SDK global de GitHub Actions
-      - name: Build APK with Buildozer
-        run: |
-          # Pasamos las rutas del SDK oficial de GitHub Actions a Buildozer
-          export ANDROID_HOME=$ANDROID_HOME
-          export ANDROID_SDK_ROOT=$ANDROID_HOME
-          
-          # Forzamos la aceptación de licencias por si acaso
-          yes | buildozer android debug
+      - name: Create Buildozer Config Cache Directory
+        run: mkdir -p ~/.buildozer
 
-      - name: Find and Move APK
-        if: success()
+      - name: Build APK
         run: |
-          mkdir -p output_apk
-          find . -name "*.apk" -exec cp {} output_apk/ \;
-          echo "Archivos encontrados:"
-          ls -R output_apk/
+          buildozer android debug 2>&1 | tee build.log
+        continue-on-error: false
 
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: apk-calculadora
-          path: output_apk/*.apk
+          name: apk
+          path: bin/*.apk
 
       - name: Upload Build Logs
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: build-logs
-          path: |
-            ~/.buildozer/android/platform/build-*.log
-            .buildozer/android/platform/build-*.log
+          path: build.log
