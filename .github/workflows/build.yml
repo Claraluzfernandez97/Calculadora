@@ -40,11 +40,14 @@ jobs:
 
       - name: Build APK with Buildozer
         run: |
-          # El parámetro --yes acepta automáticamente las licencias de Android SDK en carrera
-          buildozer -v android debug --yes
+          set -o pipefail
+          # El parámetro --yes acepta automáticamente los términos del SDK en la nube
+          buildozer -v android debug --yes 2>&1 | tee build.log
 
-      - name: Upload APK Artifact
+      - name: Upload APK & Logs Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: calculadora-apk
-          path: bin/*.apk
+          name: calculadora-compilada
+          path: |
+            bin/*.apk
+            build.log
