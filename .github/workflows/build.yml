@@ -39,64 +39,29 @@ jobs:
           sudo update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/java-17-openjdk-amd64/bin/javac 1
           echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
 
+      # 1. Usamos la acción oficial para instalar las herramientas necesarias en el entorno de GitHub
       - name: Setup Android SDK Tools
         uses: android-actions/setup-android@v3
 
-      - name: Configure SDK root for Buildozer
+      # 2. Instalamos build-tools globalmente usando el sdkmanager correcto de la acción anterior
+      - name: Install Android SDK components
         run: |
-          ANDROID_SDK_ROOT="$HOME/.buildozer/android/platform/android-sdk"
-          ANDROID_HOME="$ANDROID_SDK_ROOT"
-          mkdir -p "$ANDROID_SDK_ROOT"
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
-          # Ensure cmdline-tools path is available for subsequent steps
-          echo "PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH" >> $GITHUB_ENV
-
-      - name: Install Android SDK components into Buildozer SDK root
-        run: |
-          ANDROID_SDK_ROOT="$HOME/.buildozer/android/platform/android-sdk"
-          # Install cmdline-tools and required components into the Buildozer SDK root
-          yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --install "cmdline-tools;latest" "platform-tools" "platforms;android-34" "build-tools;34.0.0" || true
-
-      - name: Accept Android SDK Licenses
-        run: |
-          ANDROID_SDK_ROOT="$HOME/.buildozer/android/platform/android-sdk"
-          yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses || true
-
-      - name: Verify and Install AIDL
-        run: |
-          ANDROID_SDK_ROOT="$HOME/.buildozer/android/platform/android-sdk"
-          if [ -x "$ANDROID_SDK_ROOT/build-tools/34.0.0/aidl" ]; then
-            echo "aidl found: $ANDROID_SDK_ROOT/build-tools/34.0.0/aidl"
-          else
-            echo "aidl NOT found, listing SDK contents:"
-            ls -la "$ANDROID_SDK_ROOT" || true
-            ls -la "$ANDROID_SDK_ROOT/build-tools" || true
-            exit 1
-          fi
+          yes | sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Install Buildozer and Dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
           pip install buildozer cython virtualenv pycparser
 
-      - name: Create Buildozer Config Cache Directory
-        run: mkdir -p ~/.buildozer
-
-      - name: Debug SDK layout
+      # 3. Compilar el APK diciéndole a Buildozer que use el SDK global de GitHub Actions
+      - name: Build APK with Buildozer
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-          ls -la "$HOME/.buildozer" || true
-          ls -la "$HOME/.buildozer/android" || true
-          ls -la "$HOME/.buildozer/android/platform" || true
-          ls -la "$HOME/.buildozer/android/platform/android-sdk" || true
-          ls -la "$HOME/.buildozer/android/platform/android-sdk/build-tools" || true
-
-      - name: Build APK
-        run: |
+          # Pasamos las rutas del SDK oficial de GitHub Actions a Buildozer
+          export ANDROID_HOME=$ANDROID_HOME
           export ANDROID_SDK_ROOT=$ANDROID_HOME
-          buildozer android debug
+          
+          # Forzamos la aceptación de licencias por si acaso
+          yes | buildozer android debug
 
       - name: Find and Move APK
         if: success()
@@ -118,5 +83,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-logs
-          path: ~/.buildozer/android/platform/build-*.log
-
+          path: |
+            ~/.buildozer/android/platform/build-*.log
+            .buildozer/android/platform/build-*.log
