@@ -18,11 +18,18 @@ jobs:
         with:
           python-version: "3.10"
 
+      # FIX 1: Use the official Java action to explicitly override JAVA_HOME to JDK 17
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       - name: Install Android Build Dependencies
         run: |
           sudo apt update
           sudo apt install -y \
-            git zip unzip openjdk-17-jdk \
+            git zip unzip \
             autoconf automake libtool m4 \
             pkg-config \
             zlib1g-dev libncurses5-dev libgdbm-dev \
@@ -42,18 +49,25 @@ jobs:
       - name: Create Buildozer Config Cache Directory
         run: mkdir -p ~/.buildozer
 
+      # FIX 2: Added "set -o pipefail" so Buildozer crashes actually stop the workflow.
+      # FIX 3: Added the verbose flag (-v) so Buildozer outputs everything to your log file.
       - name: Build APK
+        shell: bash
         run: |
-          buildozer android debug 2>&1 | tee build.log
-        continue-on-error: false
+          set -o pipefail
+          buildozer -v android debug 2>&1 | tee build.log
 
+      # FIX 4: Check recursive paths just in case Buildozer places the APK deeply
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: apk
-          path: bin/*.apk
+          path: |
+            bin/*.apk
+            **/.buildozer/android/platform/build*/**/*.apk
 
+      # This will now properly trigger whenever Buildozer fails!
       - name: Upload Build Logs
         if: failure()
         uses: actions/upload-artifact@v4
