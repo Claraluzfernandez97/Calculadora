@@ -42,22 +42,37 @@ jobs:
       - name: Setup Android SDK Tools
         uses: android-actions/setup-android@v3
 
+      - name: Configure SDK root for Buildozer
+        run: |
+          ANDROID_SDK_ROOT="$HOME/.buildozer/android/platform/android-sdk"
+          ANDROID_HOME="$ANDROID_SDK_ROOT"
+          mkdir -p "$ANDROID_SDK_ROOT"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          # Ensure cmdline-tools path is available for subsequent steps
+          echo "PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH" >> $GITHUB_ENV
+
+      - name: Install Android SDK components into Buildozer SDK root
+        run: |
+          ANDROID_SDK_ROOT="$HOME/.buildozer/android/platform/android-sdk"
+          # Install cmdline-tools and required components into the Buildozer SDK root
+          yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --install "cmdline-tools;latest" "platform-tools" "platforms;android-34" "build-tools;34.0.0" || true
+
       - name: Accept Android SDK Licenses
         run: |
-          yes | sdkmanager --licenses || true
-
-      - name: Install Android Build Tools
-        run: |
-          sdkmanager "build-tools;34.0.0"
-          sdkmanager "platforms;android-34"
-          sdkmanager "platform-tools"
+          ANDROID_SDK_ROOT="$HOME/.buildozer/android/platform/android-sdk"
+          yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses || true
 
       - name: Verify and Install AIDL
         run: |
-          export ANDROID_SDK_ROOT=$ANDROID_HOME
-          if [ ! -f "$ANDROID_SDK_ROOT/build-tools/34.0.0/aidl" ]; then
-            echo "Installing build-tools..."
-            sdkmanager "build-tools;34.0.0"
+          ANDROID_SDK_ROOT="$HOME/.buildozer/android/platform/android-sdk"
+          if [ -x "$ANDROID_SDK_ROOT/build-tools/34.0.0/aidl" ]; then
+            echo "aidl found: $ANDROID_SDK_ROOT/build-tools/34.0.0/aidl"
+          else
+            echo "aidl NOT found, listing SDK contents:"
+            ls -la "$ANDROID_SDK_ROOT" || true
+            ls -la "$ANDROID_SDK_ROOT/build-tools" || true
+            exit 1
           fi
 
       - name: Install Buildozer and Dependencies
@@ -67,6 +82,16 @@ jobs:
 
       - name: Create Buildozer Config Cache Directory
         run: mkdir -p ~/.buildozer
+
+      - name: Debug SDK layout
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          ls -la "$HOME/.buildozer" || true
+          ls -la "$HOME/.buildozer/android" || true
+          ls -la "$HOME/.buildozer/android/platform" || true
+          ls -la "$HOME/.buildozer/android/platform/android-sdk" || true
+          ls -la "$HOME/.buildozer/android/platform/android-sdk/build-tools" || true
 
       - name: Build APK
         run: |
