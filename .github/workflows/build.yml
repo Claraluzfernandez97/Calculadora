@@ -1,78 +1,28 @@
-name: CI
+- name: Install Android Build Dependencies
+  run: |
+    sudo apt update
+    sudo apt install -y \
+      git zip unzip \
+      autoconf automake libtool m4 \
+      pkg-config \
+      zlib1g-dev libncurses5-dev libgdbm-dev \
+      libssl-dev libffi-dev libsqlite3-dev \
+      tk-dev libgdbm-compat-dev \
+      libreadline-dev liblzma-dev \
+      cmake ninja-build
+    
+    # Generate libtool macros in the correct order
+    sudo libtoolize --force --copy --install || true
+    sudo aclocal -I /usr/share/aclocal || true
+    sudo autoheader || true
+    sudo automake --force-missing --add-missing || true
+    sudo autoconf || true
 
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4.2.2
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      # Configurar Java 11 explícitamente (soluciona el error de "major version 65")
-      - name: Set up JDK 11
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '11'
-
-      - name: Install Android Build Dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y \
-            git zip unzip \
-            autoconf automake libtool m4 \
-            pkg-config \
-            zlib1g-dev libncurses5-dev libgdbm-dev \
-            libssl-dev libffi-dev libsqlite3-dev \
-            tk-dev libgdbm-compat-dev \
-            libreadline-dev liblzma-dev \
-            cmake ninja-build
-          
-          # Properly regenerate libtool macros
-          sudo libtoolize --force --copy --quiet || true
-          sudo aclocal || true
-          sudo autoconf || true
-
-      - name: Install Buildozer and Dependencies
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
-          pip install buildozer cython virtualenv pycparser
-
-      - name: Create Buildozer Config Cache Directory
-        run: mkdir -p ~/.buildozer
-
-      - name: Build APK
-        run: |
-          # Forzamos a Buildozer a usar Java 11 en el entorno
-          export JAVA_HOME=$JAVA_HOME_11_X64
-          export PATH=$JAVA_HOME/bin:$PATH
-          # Clear any stale autoconf cache
-          export ACLOCAL_PATH="/usr/share/aclocal:$ACLOCAL_PATH"
-          yes | buildozer android debug
-        continue-on-error: false
-
-      - name: Upload APK
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: apk
-          path: |
-            bin/*.apk
-            **/*.apk
-
-      - name: Upload Build Logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-logs
-          path: build.log
+- name: Build APK
+  run: |
+    export JAVA_HOME=$JAVA_HOME_11_X64
+    export PATH=$JAVA_HOME/bin:$PATH
+    export ACLOCAL_PATH="/usr/share/aclocal:/usr/local/share/aclocal:$ACLOCAL_PATH"
+    export M4PATH="/usr/share/aclocal:/usr/local/share/aclocal"
+    yes | buildozer android debug
+  continue-on-error: false
