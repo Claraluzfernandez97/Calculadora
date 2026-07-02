@@ -27,11 +27,13 @@ jobs:
       - name: Install Android Build Dependencies
         run: |
           sudo apt update
-          sudo apt install -y git zip unzip autoconf automake libtool libtool-bin m4 \
+          sudo apt install -y git zip unzip autoconf automake libtool libtool-bin libtool-dev m4 \
             pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libssl-dev \
             libffi-dev libsqlite3-dev tk-dev libgdbm-compat-dev \
             cmake ninja-build libsdl2-dev libsdl2-image-dev \
             libsdl2-mixer-dev libsdl2-ttf-dev
+          # Regenerate libtool macros
+          libtoolize --force --install
 
       - name: Install Buildozer and Python dependencies
         run: |
@@ -51,4 +53,3 @@ jobs:
           path: |
             bin/*.apk
             build.log
-
