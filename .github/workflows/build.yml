@@ -1,101 +1,33 @@
-name: CI
+- name: Install Android SDK and build-tools
+  run: |
+    set -euxo pipefail
+    export ANDROID_SDK_ROOT="$HOME/Android/Sdk"
+    mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools" "$ANDROID_SDK_ROOT/platforms" "$ANDROID_SDK_ROOT/build-tools" "$ANDROID_SDK_ROOT/platform-tools"
 
-on:
-  push:
-    branches:
-      - main
+    # Download command-line tools
+    curl -fsSL -o /tmp/commandlinetools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+    unzip -q /tmp/commandlinetools.zip -d "$ANDROID_SDK_ROOT/cmdline-tools"
+    mv "$ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools" "$ANDROID_SDK_ROOT/cmdline-tools/latest" || true
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+    export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    # Accept licenses
+    yes | sdkmanager --licenses > /dev/null 2>&1 || true
+    
+    sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
+    # Link to Buildozer's expected path
+    mkdir -p "$HOME/.buildozer/android/platform"
+    rm -f "$HOME/.buildozer/android/platform/android-sdk" || true
+    ln -s "$ANDROID_SDK_ROOT" "$HOME/.buildozer/android/platform/android-sdk"
 
-      # FIX 1: Use the official Java action to explicitly override JAVA_HOME to JDK 17
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Install Android Build Dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y \
-            git zip unzip \
-            autoconf automake libtool m4 \
-            pkg-config \
-            zlib1g-dev libncurses5-dev libgdbm-dev \
-            libssl-dev libffi-dev libsqlite3-dev \
-            tk-dev libgdbm-compat-dev \
-            libreadline-dev liblzma-dev \
-            cmake ninja-build
-          
-          # Rebuild libtool macros
-          sudo libtoolize --force --copy --quiet || true
-
-      - name: Install Buildozer and Dependencies
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
-          pip install buildozer cython virtualenv pycparser
-
-      - name: Install Android SDK and build-tools
-        run: |
-          set -euxo pipefail
-          export ANDROID_SDK_ROOT="$HOME/Android/Sdk"
-          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools" "$ANDROID_SDK_ROOT/platforms" "$ANDROID_SDK_ROOT/build-tools" "$ANDROID_SDK_ROOT/platform-tools"
-
-          # Download command-line tools (update URL if Google publishes a newer version)
-          curl -fsSL -o /tmp/commandlinetools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip -q /tmp/commandlinetools.zip -d "$ANDROID_SDK_ROOT/cmdline-tools"
-          # Normalize the path for sdkmanager
-          mv "$ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools" "$ANDROID_SDK_ROOT/cmdline-tools/latest" || true
-
-          export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
-
-          # Accept licenses with suppressed output
-          yes | sdkmanager --licenses > /dev/null 2>&1 || true
-          
-          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
-
-          # Make Buildozer's expected SDK path point to the installed SDK
-          mkdir -p "$HOME/.buildozer/android/platform"
-          rm -f "$HOME/.buildozer/android/platform/android-sdk" || true
-          ln -s "$ANDROID_SDK_ROOT" "$HOME/.buildozer/android/platform/android-sdk"
-
-      - name: Create Buildozer Config Cache Directory
-        run: mkdir -p ~/.buildozer
-
-      # FIX 2: Added "set -o pipefail" so Buildozer crashes actually stop the workflow.
-      # FIX 3: Added the verbose flag (-v) so Buildozer outputs everything to your log file.
-      - name: Build APK
-        shell: bash
-        run: |
-          set -o pipefail
-          buildozer -v android debug 2>&1 | tee build.log
-
-      # FIX 4: Check recursive paths just in case Buildozer places the APK deeply
-      - name: Upload APK
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: apk
-          path: |
-            bin/*.apk
-            **/.buildozer/android/platform/build*/**/*.apk
-
-      # This will now properly trigger whenever Buildozer fails!
-      - name: Upload Build Logs
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-logs
-          path: build.log
+- name: Build APK
+  env:
+    ANDROID_SDK_ROOT: ${{ env.HOME }}/Android/Sdk
+    ANDROID_HOME: ${{ env.HOME }}/Android/Sdk
+    PATH: ${{ env.HOME }}/Android/Sdk/cmdline-tools/latest/bin:${{ env.PATH }}
+  shell: bash
+  run: |
+    set -o pipefail
+    buildozer -v android debug 2>&1 | tee build.log
 
