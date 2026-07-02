@@ -60,8 +60,9 @@ jobs:
 
           export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
 
-          # Accept licenses and install required packages (adjust versions to match your buildozer.spec)
-          yes | sdkmanager --licenses
+          # Accept licenses with suppressed output
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          
           sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
           # Make Buildozer's expected SDK path point to the installed SDK
@@ -97,3 +98,4 @@ jobs:
         with:
           name: build-logs
           path: build.log
+
