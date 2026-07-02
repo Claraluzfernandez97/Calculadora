@@ -46,6 +46,29 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           pip install buildozer cython virtualenv pycparser
 
+      - name: Install Android SDK and build-tools
+        run: |
+          set -euxo pipefail
+          export ANDROID_SDK_ROOT="$HOME/Android/Sdk"
+          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools" "$ANDROID_SDK_ROOT/platforms" "$ANDROID_SDK_ROOT/build-tools" "$ANDROID_SDK_ROOT/platform-tools"
+
+          # Download command-line tools (update URL if Google publishes a newer version)
+          curl -fsSL -o /tmp/commandlinetools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip -q /tmp/commandlinetools.zip -d "$ANDROID_SDK_ROOT/cmdline-tools"
+          # Normalize the path for sdkmanager
+          mv "$ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools" "$ANDROID_SDK_ROOT/cmdline-tools/latest" || true
+
+          export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
+
+          # Accept licenses and install required packages (adjust versions to match your buildozer.spec)
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
+          # Make Buildozer's expected SDK path point to the installed SDK
+          mkdir -p "$HOME/.buildozer/android/platform"
+          rm -f "$HOME/.buildozer/android/platform/android-sdk" || true
+          ln -s "$ANDROID_SDK_ROOT" "$HOME/.buildozer/android/platform/android-sdk"
+
       - name: Create Buildozer Config Cache Directory
         run: mkdir -p ~/.buildozer
 
