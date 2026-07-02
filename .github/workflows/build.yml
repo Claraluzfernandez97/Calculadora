@@ -27,8 +27,8 @@ jobs:
 
       - name: Install Android Build Dependencies
         run: |
-          sudo apt update
-          sudo apt install -y \
+          sudo apt-get update
+          sudo apt-get install -y \
             git zip unzip tee \
             autoconf automake libtool m4 \
             pkg-config \
@@ -86,19 +86,4 @@ jobs:
           buildozer -v android debug 2>&1 | tee build.log
 
       # FIX 4: Check recursive paths just in case Buildozer places the APK deeply
-      - name: Upload APK
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: apk
-          path: |
-            bin/*.apk
-            **/.buildozer/android/platform/build*/**/*.apk
-
-      # This will now properly trigger whenever Buildozer fails!
-      - name: Upload Build Logs
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-logs
-          path: build.log
+
